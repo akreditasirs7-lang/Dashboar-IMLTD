@@ -1,5 +1,5 @@
 # =============================
-# IMPORT (WAJIB DI PALING ATAS)
+# IMPORT
 # =============================
 import streamlit as st
 import pandas as pd
@@ -35,23 +35,14 @@ st.caption("Operasional (A:I) & Ringkasan (A:Q) | Streamlit Gratis")
 # ======================================================
 st.markdown("## 🔵 Data Operasional (A:I)")
 
-f1, f2, f3, f4 = st.columns(4)
-
-bulan_ai = f1.multiselect("Bulan", df["Bulan"].dropna().unique())
-qc_ai = f2.multiselect("QC", sorted(df["QC"].dropna().unique()))
-cal_ai = f3.multiselect("CAL", sorted(df["CAL"].dropna().unique()))
-confirm_ai = f4.multiselect("Confirm", sorted(df["Confirm"].dropna().unique()))
+bulan_ai = st.multiselect(
+    "Bulan (Operasional)",
+    df["Bulan"].dropna().unique()
+)
 
 df_ai = df.copy()
-
 if bulan_ai:
     df_ai = df_ai[df_ai["Bulan"].isin(bulan_ai)]
-if qc_ai:
-    df_ai = df_ai[df_ai["QC"].isin(qc_ai)]
-if cal_ai:
-    df_ai = df_ai[df_ai["CAL"].isin(cal_ai)]
-if confirm_ai:
-    df_ai = df_ai[df_ai["Confirm"].isin(confirm_ai)]
 
 # ---------- CHART A:I ----------
 c1, c2 = st.columns(2)
@@ -98,6 +89,24 @@ with c4:
     )
     st.plotly_chart(fig, use_container_width=True)
 
+# ---------- TREND BATANGAN ----------
+st.markdown("### 📈 Tren Sampel per Bulan")
+
+trend_ai = (
+    df_ai
+    .groupby("Bulan", as_index=False)["Sampel"]
+    .sum()
+)
+
+fig = px.bar(
+    trend_ai,
+    x="Bulan",
+    y="Sampel",
+    title="Tren Sampel Bulanan",
+    color="Bulan"
+)
+st.plotly_chart(fig, use_container_width=True)
+
 # ======================================================
 # ===================== BAGIAN A:Q =====================
 # ======================================================
@@ -110,7 +119,6 @@ bulan_aq = st.multiselect(
 )
 
 df_aq = df.copy()
-
 if bulan_aq:
     df_aq = df_aq[df_aq["Bulan.1"].isin(bulan_aq)]
 
@@ -139,17 +147,7 @@ with c6:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-fig = px.line(
-    df_aq.sort_values("Tgl"),
-    x="Tgl",
-    y="MU",
-    color="Gedung",
-    title="Tren MU",
-    color_discrete_sequence=px.colors.sequential.Purples
-)
-st.plotly_chart(fig, use_container_width=True)
-
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | Aman untuk Free Tier")
+st.caption("© Dashboard Streamlit | Free Tier Safe")
