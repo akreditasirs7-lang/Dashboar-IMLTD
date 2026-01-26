@@ -1,14 +1,15 @@
+# =============================
+# IMPORT (WAJIB DI PALING ATAS)
+# =============================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from io import BytesIO
-import numpy as np
 
 # =============================
 # CONFIG
 # =============================
 st.set_page_config(
-    page_title="Dashboard MU & Gedung",
+    page_title="Dashboard Laboratorium",
     layout="wide"
 )
 
@@ -17,6 +18,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vShFzH08gzIA2BUP7MUAm
 @st.cache_data
 def load_data():
     df = pd.read_csv(CSV_URL)
+    df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
     df["Tgl"] = pd.to_datetime(df["Tgl"], errors="coerce")
     return df
 
@@ -25,60 +27,129 @@ df = load_data()
 # =============================
 # HEADER
 # =============================
-st.markdown("## 🟣 Dashboard MU & Gedung (Executive)")
-st.caption("Kategori 2 | Streamlit Free Edition")
+st.title("📊 Dashboard Laboratorium")
+st.caption("Operasional (A:I) & Ringkasan (A:Q) | Streamlit Gratis")
 
-# =============================
-# FILTER
-# =============================
+# ======================================================
+# ===================== BAGIAN A:I =====================
+# ======================================================
+st.markdown("## 🔵 Data Operasional (A:I)")
+
 f1, f2, f3, f4 = st.columns(4)
 
-gedung = f1.multiselect("Gedung", df["Gedung"].dropna().unique())
-alat = f2.multiselect("Alat", df["Alat.1"].dropna().unique())
-bulan = f3.multiselect("Bulan", df["Bulan.1"].dropna().unique())
-tahun = f4.multiselect("Tahun", df["Tahun.1"].dropna().unique())
+bulan_ai = f1.multiselect("Bulan", df["Bulan"].dropna().unique())
+qc_ai = f2.multiselect("QC", sorted(df["QC"].dropna().unique()))
+cal_ai = f3.multiselect("CAL", sorted(df["CAL"].dropna().unique()))
+confirm_ai = f4.multiselect("Confirm", sorted(df["Confirm"].dropna().unique()))
 
-df2 = df.copy()
-if gedung: df2 = df2[df2["Gedung"].isin(gedung)]
-if alat: df2 = df2[df2["Alat.1"].isin(alat)]
-if bulan: df2 = df2[df2["Bulan.1"].isin(bulan)]
-if tahun: df2 = df2[df2["Tahun.1"].isin(tahun)]
+df_ai = df.copy()
 
-# =============================
-# KPI
-# =============================
-k1, k2, k3, k4 = st.columns(4)
+if bulan_ai:
+    df_ai = df_ai[df_ai["Bulan"].isin(bulan_ai)]
+if qc_ai:
+    df_ai = df_ai[df_ai["QC"].isin(qc_ai)]
+if cal_ai:
+    df_ai = df_ai[df_ai["CAL"].isin(cal_ai)]
+if confirm_ai:
+    df_ai = df_ai[df_ai["Confirm"].isin(confirm_ai)]
 
-k1.metric("Total MU", int(df2["MU"].sum()))
-k2.metric("Rata-rata MU", round(df2["MU"].mean(), 1))
-k3.metric("Jumlah Gedung", df2["Gedung"].nunique())
-k4.metric("Jumlah Alat", df2["Alat.1"].nunique())
-
-# =============================
-# CHART
-# =============================
+# ---------- CHART A:I ----------
 c1, c2 = st.columns(2)
 
 with c1:
     fig = px.bar(
-        df2,
-        x="Gedung",
-        y="MU",
-        color="Gedung",
-        title="Total MU per Gedung",
-        color_discrete_sequence=px.colors.sequential.Purples
+        df_ai,
+        x="Parameter",
+        y="Sampel",
+        color="Parameter",
+        title="Sampel per Parameter"
     )
     st.plotly_chart(fig, use_container_width=True)
 
 with c2:
-    fig = px.line(
-        df2.sort_values("Tgl"),
-        x="Tgl",
+    fig = px.bar(
+        df_ai,
+        x="Parameter",
+        y="QC",
+        color="Parameter",
+        title="QC per Parameter"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+c3, c4 = st.columns(2)
+
+with c3:
+    fig = px.bar(
+        df_ai,
+        x="Parameter",
+        y="CAL",
+        color="Parameter",
+        title="CAL per Parameter"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+with c4:
+    fig = px.bar(
+        df_ai,
+        x="Parameter",
+        y="Confirm",
+        color="Parameter",
+        title="Confirm per Parameter"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# ======================================================
+# ===================== BAGIAN A:Q =====================
+# ======================================================
+st.markdown("---")
+st.markdown("## 🟣 Data Ringkasan (A:Q)")
+
+bulan_aq = st.multiselect(
+    "Bulan (Ringkasan)",
+    df["Bulan.1"].dropna().unique()
+)
+
+df_aq = df.copy()
+
+if bulan_aq:
+    df_aq = df_aq[df_aq["Bulan.1"].isin(bulan_aq)]
+
+# ---------- CHART A:Q ----------
+c5, c6 = st.columns(2)
+
+with c5:
+    fig = px.bar(
+        df_aq,
+        x="Gedung",
         y="MU",
         color="Gedung",
-        title="Tren MU",
+        title="MU per Gedung",
         color_discrete_sequence=px.colors.sequential.Purples
     )
     st.plotly_chart(fig, use_container_width=True)
 
-st.dataframe(df2, use_container_width=True)
+with c6:
+    fig = px.bar(
+        df_aq,
+        x="Alat.1",
+        y="MU",
+        color="Alat.1",
+        title="MU per Alat",
+        color_discrete_sequence=px.colors.sequential.Purples
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+fig = px.line(
+    df_aq.sort_values("Tgl"),
+    x="Tgl",
+    y="MU",
+    color="Gedung",
+    title="Tren MU",
+    color_discrete_sequence=px.colors.sequential.Purples
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# =============================
+# FOOTER
+# =============================
+st.caption("© Dashboard Streamlit | Aman untuk Free Tier")
