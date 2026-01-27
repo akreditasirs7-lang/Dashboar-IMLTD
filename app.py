@@ -13,6 +13,20 @@ st.set_page_config(
     layout="wide"
 )
 
+# =============================
+# SIDEBAR STYLE (PINK LEMBUT)
+# =============================
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] {
+        background-color: #fde4ec;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vShFzH08gzIA2BUP7MUAmrMl8DXh8qGq_QjltBoIPsAyVSgV1XyGJFE2uZ3vntdZNB9Io1EMluKa6Nv/pub?gid=900811511&single=true&output=csv"
 
 @st.cache_data
@@ -25,6 +39,29 @@ def load_data():
 df = load_data()
 
 # =============================
+# SIDEBAR FILTER
+# =============================
+st.sidebar.title("🔎 Filter Dashboard")
+
+# --- A:I ---
+st.sidebar.subheader("🔵 Data Operasional (A:I)")
+bulan_ai_all = sorted(df["Bulan"].dropna().unique())
+bulan_ai = st.sidebar.multiselect(
+    "Pilih Bulan",
+    bulan_ai_all,
+    default=bulan_ai_all
+)
+
+# --- A:Q ---
+st.sidebar.subheader("🟣 Data Ringkasan (A:Q)")
+bulan_aq_all = sorted(df["Bulan.1"].dropna().unique())
+bulan_aq = st.sidebar.multiselect(
+    "Pilih Bulan",
+    bulan_aq_all,
+    default=bulan_aq_all
+)
+
+# =============================
 # HEADER
 # =============================
 st.title("📊 Dashboard Laboratorium")
@@ -35,14 +72,7 @@ st.caption("Operasional (A:I) & Ringkasan (A:Q) | Streamlit Free Tier")
 # ======================================================
 st.markdown("## 🔵 Data Operasional (A:I)")
 
-bulan_ai = st.multiselect(
-    "Bulan (Operasional)",
-    sorted(df["Bulan"].dropna().unique())
-)
-
-df_ai = df.copy()
-if bulan_ai:
-    df_ai = df_ai[df_ai["Bulan"].isin(bulan_ai)]
+df_ai = df[df["Bulan"].isin(bulan_ai)]
 
 # ---------- AGGREGASI ----------
 sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
@@ -127,14 +157,7 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("---")
 st.markdown("## 🟣 Data Ringkasan (A:Q)")
 
-bulan_aq = st.multiselect(
-    "Bulan (Ringkasan)",
-    sorted(df["Bulan.1"].dropna().unique())
-)
-
-df_aq = df.copy()
-if bulan_aq:
-    df_aq = df_aq[df_aq["Bulan.1"].isin(bulan_aq)]
+df_aq = df[df["Bulan.1"].isin(bulan_aq)]
 
 # ---------- AGGREGASI ----------
 mu_gedung = df_aq.groupby("Gedung", as_index=False)["MU"].sum()
@@ -174,4 +197,4 @@ with c6:
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | Data teragregasi & akurat")
+st.caption("© Dashboard Streamlit | Tampilan rapi, data akurat, free tier safe")
