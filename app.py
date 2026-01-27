@@ -46,27 +46,51 @@ df = load_data()
 # =============================
 st.sidebar.title("🔎 Filter Dashboard")
 
-# ---- KATEGORI A:I ----
+# ======================================================
+# ================= KATEGORI A:I ========================
+# ======================================================
 st.sidebar.subheader("🔵 Data Operasional (A:I)")
+
 bulan_ai_all = sorted(df["Bulan"].dropna().unique())
 
-bulan_ai = st.sidebar.multiselect(
-    "Pilih Bulan (A:I)",
-    bulan_ai_all,
-    default=bulan_ai_all,
-    key="bulan_ai"
+select_all_ai = st.sidebar.checkbox(
+    "Pilih Semua Bulan (A:I)",
+    value=True,
+    key="select_all_ai"
 )
 
-# ---- KATEGORI A:Q ----
+if select_all_ai:
+    bulan_ai = bulan_ai_all
+else:
+    bulan_ai = st.sidebar.multiselect(
+        "Pilih Bulan (A:I)",
+        bulan_ai_all,
+        default=bulan_ai_all,
+        key="bulan_ai"
+    )
+
+# ======================================================
+# ================= KATEGORI A:Q ========================
+# ======================================================
 st.sidebar.subheader("🟣 Data Ringkasan (A:Q)")
+
 bulan_aq_all = sorted(df["Bulan.1"].dropna().unique())
 
-bulan_aq = st.sidebar.multiselect(
-    "Pilih Bulan (A:Q)",
-    bulan_aq_all,
-    default=bulan_aq_all,
-    key="bulan_aq"
+select_all_aq = st.sidebar.checkbox(
+    "Pilih Semua Bulan (A:Q)",
+    value=True,
+    key="select_all_aq"
 )
+
+if select_all_aq:
+    bulan_aq = bulan_aq_all
+else:
+    bulan_aq = st.sidebar.multiselect(
+        "Pilih Bulan (A:Q)",
+        bulan_aq_all,
+        default=bulan_aq_all,
+        key="bulan_aq"
+    )
 
 # =============================
 # HEADER
@@ -204,4 +228,4 @@ with c6:
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | Data akurat • Layout rapi • Free Tier Safe")
+st.caption("© Dashboard Streamlit | Filter lengkap • Data akurat • Free Tier Safe")
