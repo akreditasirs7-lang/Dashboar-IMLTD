@@ -53,8 +53,10 @@ with c1:
         x="Parameter",
         y="Sampel",
         color="Parameter",
-        title="Sampel per Parameter"
+        title="Sampel per Parameter",
+        text_auto=True
     )
+    fig.update_traces(textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
 with c2:
@@ -63,8 +65,10 @@ with c2:
         x="Parameter",
         y="QC",
         color="Parameter",
-        title="QC per Parameter"
+        title="QC per Parameter",
+        text_auto=True
     )
+    fig.update_traces(textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
 c3, c4 = st.columns(2)
@@ -75,8 +79,10 @@ with c3:
         x="Parameter",
         y="CAL",
         color="Parameter",
-        title="CAL per Parameter"
+        title="CAL per Parameter",
+        text_auto=True
     )
+    fig.update_traces(textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
 with c4:
@@ -85,8 +91,10 @@ with c4:
         x="Parameter",
         y="Confirm",
         color="Parameter",
-        title="Confirm per Parameter"
+        title="Confirm per Parameter",
+        text_auto=True
     )
+    fig.update_traces(textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
 # ---------- TREND BATANGAN ----------
@@ -103,8 +111,10 @@ fig = px.bar(
     x="Bulan",
     y="Sampel",
     title="Tren Sampel Bulanan",
-    color="Bulan"
+    color="Bulan",
+    text_auto=True
 )
+fig.update_traces(textposition="outside")
 st.plotly_chart(fig, use_container_width=True)
 
 # ======================================================
@@ -132,8 +142,10 @@ with c5:
         y="MU",
         color="Gedung",
         title="MU per Gedung",
-        color_discrete_sequence=px.colors.sequential.Purples
+        color_discrete_sequence=px.colors.sequential.Purples,
+        text_auto=True
     )
+    fig.update_traces(textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
 with c6:
@@ -143,8 +155,10 @@ with c6:
         y="MU",
         color="Alat.1",
         title="MU per Alat",
-        color_discrete_sequence=px.colors.sequential.Purples
+        color_discrete_sequence=px.colors.sequential.Purples,
+        text_auto=True
     )
+    fig.update_traces(textposition="outside")
     st.plotly_chart(fig, use_container_width=True)
 
 # =============================
