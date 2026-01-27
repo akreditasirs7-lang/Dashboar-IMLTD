@@ -28,7 +28,7 @@ df = load_data()
 # HEADER
 # =============================
 st.title("📊 Dashboard Laboratorium")
-st.caption("Operasional (A:I) & Ringkasan (A:Q) | Streamlit Gratis")
+st.caption("Operasional (A:I) & Ringkasan (A:Q) | Streamlit Free Tier")
 
 # ======================================================
 # ===================== BAGIAN A:I =====================
@@ -37,84 +37,88 @@ st.markdown("## 🔵 Data Operasional (A:I)")
 
 bulan_ai = st.multiselect(
     "Bulan (Operasional)",
-    df["Bulan"].dropna().unique()
+    sorted(df["Bulan"].dropna().unique())
 )
 
 df_ai = df.copy()
 if bulan_ai:
     df_ai = df_ai[df_ai["Bulan"].isin(bulan_ai)]
 
-# ---------- CHART A:I ----------
+# ---------- AGGREGASI ----------
+sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
+qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
+cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
+confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
+
+# ---------- CHART ROW 1 ----------
 c1, c2 = st.columns(2)
 
 with c1:
     fig = px.bar(
-        df_ai,
+        sampel_param,
         x="Parameter",
         y="Sampel",
-        color="Parameter",
         title="Sampel per Parameter",
-        text_auto=True
+        text="Sampel"
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(height=420, margin=dict(t=60))
     st.plotly_chart(fig, use_container_width=True)
 
 with c2:
     fig = px.bar(
-        df_ai,
+        qc_param,
         x="Parameter",
         y="QC",
-        color="Parameter",
         title="QC per Parameter",
-        text_auto=True
+        text="QC"
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(height=420, margin=dict(t=60))
     st.plotly_chart(fig, use_container_width=True)
 
+# ---------- CHART ROW 2 ----------
 c3, c4 = st.columns(2)
 
 with c3:
     fig = px.bar(
-        df_ai,
+        cal_param,
         x="Parameter",
         y="CAL",
-        color="Parameter",
         title="CAL per Parameter",
-        text_auto=True
+        text="CAL"
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(height=420, margin=dict(t=60))
     st.plotly_chart(fig, use_container_width=True)
 
 with c4:
     fig = px.bar(
-        df_ai,
+        confirm_param,
         x="Parameter",
         y="Confirm",
-        color="Parameter",
         title="Confirm per Parameter",
-        text_auto=True
+        text="Confirm"
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(height=420, margin=dict(t=60))
     st.plotly_chart(fig, use_container_width=True)
 
-# ---------- TREND BATANGAN ----------
+# ---------- TREND BULAN ----------
 st.markdown("### 📈 Tren Sampel per Bulan")
 
-trend_ai = (
-    df_ai
-    .groupby("Bulan", as_index=False)["Sampel"]
-    .sum()
-)
+trend_ai = df_ai.groupby("Bulan", as_index=False)["Sampel"].sum()
 
 fig = px.bar(
     trend_ai,
     x="Bulan",
     y="Sampel",
     title="Tren Sampel Bulanan",
-    color="Bulan",
-    text_auto=True
+    text="Sampel",
+    color="Bulan"
 )
-fig.update_traces(textposition="outside")
+fig.update_traces(textposition="outside", cliponaxis=False)
+fig.update_layout(height=420, margin=dict(t=60))
 st.plotly_chart(fig, use_container_width=True)
 
 # ======================================================
@@ -125,43 +129,49 @@ st.markdown("## 🟣 Data Ringkasan (A:Q)")
 
 bulan_aq = st.multiselect(
     "Bulan (Ringkasan)",
-    df["Bulan.1"].dropna().unique()
+    sorted(df["Bulan.1"].dropna().unique())
 )
 
 df_aq = df.copy()
 if bulan_aq:
     df_aq = df_aq[df_aq["Bulan.1"].isin(bulan_aq)]
 
+# ---------- AGGREGASI ----------
+mu_gedung = df_aq.groupby("Gedung", as_index=False)["MU"].sum()
+mu_alat = df_aq.groupby("Alat.1", as_index=False)["MU"].sum()
+
 # ---------- CHART A:Q ----------
 c5, c6 = st.columns(2)
 
 with c5:
     fig = px.bar(
-        df_aq,
+        mu_gedung,
         x="Gedung",
         y="MU",
-        color="Gedung",
         title="MU per Gedung",
-        color_discrete_sequence=px.colors.sequential.Purples,
-        text_auto=True
+        text="MU",
+        color="Gedung",
+        color_discrete_sequence=px.colors.sequential.Purples
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(height=420, margin=dict(t=60))
     st.plotly_chart(fig, use_container_width=True)
 
 with c6:
     fig = px.bar(
-        df_aq,
+        mu_alat,
         x="Alat.1",
         y="MU",
-        color="Alat.1",
         title="MU per Alat",
-        color_discrete_sequence=px.colors.sequential.Purples,
-        text_auto=True
+        text="MU",
+        color="Alat.1",
+        color_discrete_sequence=px.colors.sequential.Purples
     )
-    fig.update_traces(textposition="outside")
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(height=420, margin=dict(t=60))
     st.plotly_chart(fig, use_container_width=True)
 
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | Free Tier Safe")
+st.caption("© Dashboard Streamlit | Data teragregasi & akurat")
