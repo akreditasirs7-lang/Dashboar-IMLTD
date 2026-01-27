@@ -27,6 +27,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# =============================
+# LOAD DATA
+# =============================
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vShFzH08gzIA2BUP7MUAmrMl8DXh8qGq_QjltBoIPsAyVSgV1XyGJFE2uZ3vntdZNB9Io1EMluKa6Nv/pub?gid=900811511&single=true&output=csv"
 
 @st.cache_data
@@ -43,22 +46,26 @@ df = load_data()
 # =============================
 st.sidebar.title("🔎 Filter Dashboard")
 
-# --- A:I ---
+# ---- KATEGORI A:I ----
 st.sidebar.subheader("🔵 Data Operasional (A:I)")
 bulan_ai_all = sorted(df["Bulan"].dropna().unique())
+
 bulan_ai = st.sidebar.multiselect(
-    "Pilih Bulan",
+    "Pilih Bulan (A:I)",
     bulan_ai_all,
-    default=bulan_ai_all
+    default=bulan_ai_all,
+    key="bulan_ai"
 )
 
-# --- A:Q ---
+# ---- KATEGORI A:Q ----
 st.sidebar.subheader("🟣 Data Ringkasan (A:Q)")
 bulan_aq_all = sorted(df["Bulan.1"].dropna().unique())
+
 bulan_aq = st.sidebar.multiselect(
-    "Pilih Bulan",
+    "Pilih Bulan (A:Q)",
     bulan_aq_all,
-    default=bulan_aq_all
+    default=bulan_aq_all,
+    key="bulan_aq"
 )
 
 # =============================
@@ -135,7 +142,7 @@ with c4:
     st.plotly_chart(fig, use_container_width=True)
 
 # ---------- TREND BULAN ----------
-st.markdown("### 📈 Tren Sampel per Bulan")
+st.markdown("### 📈 Tren Sampel Bulanan")
 
 trend_ai = df_ai.groupby("Bulan", as_index=False)["Sampel"].sum()
 
@@ -197,4 +204,4 @@ with c6:
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | Tampilan rapi, data akurat, free tier safe")
+st.caption("© Dashboard Streamlit | Data akurat • Layout rapi • Free Tier Safe")
