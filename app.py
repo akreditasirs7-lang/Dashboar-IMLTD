@@ -40,11 +40,8 @@ CSV_URL = (
 @st.cache_data
 def load_data():
     df = pd.read_csv(CSV_URL)
-
-    # pastikan kolom tanggal aman
     df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
     df["Tgl"] = pd.to_datetime(df["Tgl"], errors="coerce")
-
     return df
 
 df = load_data()
@@ -65,11 +62,11 @@ def export_excel(df):
     return buffer.getvalue()
 
 # =============================
-# URUTAN BULAN (PENTING)
+# URUTAN BULAN (WAJIB)
 # =============================
 URUTAN_BULAN = [
-    "Jan","Feb","Mar","Apr","Mei","Jun",
-    "Jul","Agu","Sep","Okt","Nov","Des"
+    "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+    "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
 ]
 
 # =============================
@@ -81,26 +78,26 @@ if st.sidebar.button("🔄 Reset Filter"):
     st.session_state.clear()
     st.experimental_rerun()
 
-st.sidebar.subheader("🔵 Filter Bulan (Global)")
+st.sidebar.subheader("🔵 Filter Bulan")
 
-bulan_ai_all = [b for b in URUTAN_BULAN if b in df["Bulan"].dropna().unique()]
+bulan_available = [b for b in URUTAN_BULAN if b in df["Bulan"].dropna().unique()]
 
 pilih_semua = st.sidebar.checkbox("Pilih Semua Bulan", True)
 
 if pilih_semua:
-    bulan_filter = bulan_ai_all
+    bulan_filter = bulan_available
 else:
     bulan_filter = st.sidebar.multiselect(
         "Pilih Bulan",
-        bulan_ai_all,
-        default=bulan_ai_all
+        bulan_available,
+        default=bulan_available
     )
 
 # =============================
 # HEADER
 # =============================
 st.title("📊 Dashboard Laboratorium")
-st.caption("A:I (Operasional) & L:Q (Ringkasan Bulanan) | Streamlit Gratis")
+st.caption("Data Operasional (A:I) & Ringkasan (L:Q) | Streamlit Gratis")
 
 # ======================================================
 # ===================== A:I =============================
@@ -116,13 +113,13 @@ k2.metric("Total QC", fmt(df_ai["QC"].sum()))
 k3.metric("Total CAL", fmt(df_ai["CAL"].sum()))
 k4.metric("Total Confirm", fmt(df_ai["Confirm"].sum()))
 
-# AGGREGASI
+# AGGREGASI PARAMETER
 sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
 qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
 cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
 confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
 
-# CHART A:I
+# CHART PARAMETER
 c1, c2 = st.columns(2)
 with c1:
     fig = px.bar(
@@ -157,6 +154,7 @@ trend_ai["Bulan"] = pd.Categorical(
     categories=URUTAN_BULAN,
     ordered=True
 )
+
 trend_ai = trend_ai.sort_values("Bulan")
 
 fig = px.bar(
@@ -164,8 +162,9 @@ fig = px.bar(
     x="Bulan",
     y="Sampel",
     text="Sampel",
-    title="Tren Sampel Bulanan"
+    title="Tren Sampel Bulanan (Jan–Des)"
 )
+
 fig.update_traces(textposition="outside", cliponaxis=False)
 st.plotly_chart(fig, use_container_width=True)
 
@@ -186,7 +185,7 @@ st.download_button(
 st.markdown("---")
 st.markdown("## 🟣 Data Ringkasan (L:Q)")
 
-# 🔴 PENTING: L:Q pakai Bulan.1
+# 🔴 PAKAI BULAN.1 UNTUK L:Q
 df_lq = df[df["Bulan.1"].isin(bulan_filter)]
 
 # KPI L:Q
@@ -204,15 +203,15 @@ mu_bulanan = (
     .sum()
 )
 
-# urutkan bulan dengan benar
 mu_bulanan["Bulan.1"] = pd.Categorical(
     mu_bulanan["Bulan.1"],
     categories=URUTAN_BULAN,
     ordered=True
 )
+
 mu_bulanan = mu_bulanan.sort_values("Bulan.1")
 
-# hapus bulan MU = 0 (biar gak ada bulan hantu)
+# buang bulan tanpa MU
 mu_bulanan = mu_bulanan[mu_bulanan["MU"] > 0]
 
 # =============================
@@ -223,14 +222,10 @@ fig = px.bar(
     x="Bulan.1",
     y="MU",
     text="MU",
-    title="Total MU per Bulan"
+    title="Total MU per Bulan (Jan–Des)"
 )
 
-fig.update_traces(
-    textposition="outside",
-    cliponaxis=False
-)
-
+fig.update_traces(textposition="outside", cliponaxis=False)
 fig.update_layout(
     xaxis_title="Bulan",
     yaxis_title="MU",
@@ -251,5 +246,5 @@ st.download_button(
 # =============================
 st.caption(
     "© Dashboard Streamlit | A:I Operasional & L:Q Ringkasan Bulanan | "
-    "Akurat • Tidak Ada Bulan Palsu • Free Tier Safe"
+    "Urutan Jan–Des • Akurat • Free Tier Safe"
 )
