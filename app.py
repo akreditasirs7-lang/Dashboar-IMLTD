@@ -10,7 +10,7 @@ from io import BytesIO
 # CONFIG
 # =============================
 st.set_page_config(
-    page_title="Dashboard Laboratorium 3D",
+    page_title="Dashboard Laboratorium",
     layout="wide"
 )
 
@@ -62,15 +62,15 @@ def export_excel(df):
     return buffer.getvalue()
 
 # =============================
-# URUTAN BULAN
+# URUTAN BULAN (WAJIB)
 # =============================
 URUTAN_BULAN = [
-    "Jan","Feb","Mar","Apr","Mei","Jun",
-    "Jul","Agu","Sep","Okt","Nov","Des"
+    "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+    "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
 ]
 
 # =============================
-# SIDEBAR FILTER
+# SIDEBAR FILTER (GLOBAL)
 # =============================
 st.sidebar.title("🔎 Filter Dashboard")
 
@@ -78,20 +78,26 @@ if st.sidebar.button("🔄 Reset Filter"):
     st.session_state.clear()
     st.experimental_rerun()
 
+st.sidebar.subheader("🔵 Filter Bulan")
+
 bulan_available = [b for b in URUTAN_BULAN if b in df["Bulan"].dropna().unique()]
+
 pilih_semua = st.sidebar.checkbox("Pilih Semua Bulan", True)
 
-bulan_filter = bulan_available if pilih_semua else st.sidebar.multiselect(
-    "Pilih Bulan",
-    bulan_available,
-    default=bulan_available
-)
+if pilih_semua:
+    bulan_filter = bulan_available
+else:
+    bulan_filter = st.sidebar.multiselect(
+        "Pilih Bulan",
+        bulan_available,
+        default=bulan_available
+    )
 
 # =============================
 # HEADER
 # =============================
-st.title("📊 Dashboard Laboratorium (3D)")
-st.caption("A:I Operasional & L:Q Ringkasan | Visual 3D • Streamlit Gratis")
+st.title("📊 Dashboard Laboratorium")
+st.caption("Data Operasional (A:I) & Ringkasan (L:Q) | Streamlit Gratis")
 
 # ======================================================
 # ===================== A:I =============================
@@ -100,28 +106,78 @@ st.markdown("## 🔵 Data Operasional (A:I)")
 
 df_ai = df[df["Bulan"].isin(bulan_filter)]
 
-# KPI
+# KPI A:I
 k1, k2, k3, k4 = st.columns(4)
 k1.metric("Total Sampel", fmt(df_ai["Sampel"].sum()))
 k2.metric("Total QC", fmt(df_ai["QC"].sum()))
 k3.metric("Total CAL", fmt(df_ai["CAL"].sum()))
 k4.metric("Total Confirm", fmt(df_ai["Confirm"].sum()))
 
-# AGGREGASI
+# AGGREGASI PARAMETER
 sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
+qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
+cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
+confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
 
-# BAR WARNA VARIASI
-fig = px.bar(
-    sampel_param,
-    x="Parameter",
-    y="Sampel",
-    color="Parameter",
-    text="Sampel",
-    color_discrete_sequence=px.colors.qualitative.Bold,
-    title="Sampel per Parameter"
+# CHART PARAMETER
+c1, c2 = st.columns(2)
+with c1:
+    fig = px.bar(
+        sampel_param,
+        x="Parameter",
+        y="Sampel",
+        text="Sampel",
+        title="Sampel per Parameter"
+    )
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+with c2:
+    fig = px.bar(
+        qc_param,
+        x="Parameter",
+        y="QC",
+        text="QC",
+        title="QC per Parameter"
+    )
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+# TREND BULAN A:I
+trend_ai = (
+    df_ai.groupby("Bulan", as_index=False)["Sampel"]
+    .sum()
 )
+
+trend_ai["Bulan"] = pd.Categorical(
+    trend_ai["Bulan"],
+    categories=URUTAN_BULAN,
+    ordered=True
+)
+
+trend_ai = trend_ai.sort_values("Bulan")
+
+fig = px.bar(
+    trend_ai,
+    x="Bulan",
+    y="Sampel",
+    text="Sampel",
+    title="Tren Sampel Bulanan (Jan–Des)"
+)
+
 fig.update_traces(textposition="outside", cliponaxis=False)
 st.plotly_chart(fig, use_container_width=True)
+
+# EXPORT A:I
+st.download_button(
+    "⬇️ Download Excel A:I",
+    export_excel(
+        df_ai.groupby("Parameter", as_index=False)[
+            ["Sampel", "QC", "CAL", "Confirm"]
+        ].sum()
+    ),
+    "data_operasional_AI.xlsx"
+)
 
 # ======================================================
 # ===================== L:Q =============================
@@ -129,19 +185,21 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("---")
 st.markdown("## 🟣 Data Ringkasan (L:Q)")
 
+# 🔴 PAKAI BULAN.1 UNTUK L:Q
 df_lq = df[df["Bulan.1"].isin(bulan_filter)]
 
-# KPI
+# KPI L:Q
 k5, k6, k7 = st.columns(3)
 k5.metric("Total MU", fmt(df_lq["MU"].sum()))
 k6.metric("Jumlah Gedung", df_lq["Gedung"].nunique())
 k7.metric("Jumlah Alat", df_lq["Alat.1"].nunique())
 
 # =============================
-# TOTAL MU PER BULAN
+# TOTAL MU PER BULAN (SUM)
 # =============================
 mu_bulanan = (
-    df_lq.groupby("Bulan.1", as_index=False)["MU"]
+    df_lq
+    .groupby("Bulan.1", as_index=False)["MU"]
     .sum()
 )
 
@@ -150,42 +208,33 @@ mu_bulanan["Bulan.1"] = pd.Categorical(
     categories=URUTAN_BULAN,
     ordered=True
 )
+
 mu_bulanan = mu_bulanan.sort_values("Bulan.1")
+
+# buang bulan tanpa MU
 mu_bulanan = mu_bulanan[mu_bulanan["MU"] > 0]
 
 # =============================
-# 🔥 3D CHART (COLUMN STYLE)
+# BAR CHART L:Q
 # =============================
-fig_3d = px.scatter_3d(
+fig = px.bar(
     mu_bulanan,
     x="Bulan.1",
     y="MU",
-    z=[0]*len(mu_bulanan),   # dasar kolom
-    size="MU",
-    color="MU",
-    color_continuous_scale="Plasma",
     text="MU",
-    title="Total MU per Bulan (3D View)"
+    title="Total MU per Bulan (Jan–Des)"
 )
 
-fig_3d.update_traces(
-    textposition="top center"
+fig.update_traces(textposition="outside", cliponaxis=False)
+fig.update_layout(
+    xaxis_title="Bulan",
+    yaxis_title="MU",
+    height=420
 )
 
-fig_3d.update_layout(
-    scene=dict(
-        xaxis_title="Bulan",
-        yaxis_title="MU",
-        zaxis_title="",
-    ),
-    height=500
-)
+st.plotly_chart(fig, use_container_width=True)
 
-st.plotly_chart(fig_3d, use_container_width=True)
-
-# =============================
-# EXPORT
-# =============================
+# EXPORT L:Q
 st.download_button(
     "⬇️ Download Excel L:Q",
     export_excel(mu_bulanan),
@@ -196,5 +245,6 @@ st.download_button(
 # FOOTER
 # =============================
 st.caption(
-    "© Dashboard Streamlit | Visual 3D • Warna Variatif • Jan–Des • Free Tier Safe"
+    "© Dashboard Streamlit | A:I Operasional & L:Q Ringkasan Bulanan | "
+    "Urutan Jan–Des • Akurat • Free Tier Safe"
 )
