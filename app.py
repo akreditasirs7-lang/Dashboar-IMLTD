@@ -9,10 +9,7 @@ from io import BytesIO
 # =============================
 # CONFIG
 # =============================
-st.set_page_config(
-    page_title="Dashboard Laboratorium",
-    layout="wide"
-)
+st.set_page_config(page_title="Dashboard Laboratorium", layout="wide")
 
 # =============================
 # SIDEBAR STYLE (PINK LEMBUT)
@@ -67,37 +64,49 @@ if st.sidebar.button("🔄 Reset Filter"):
     st.session_state.clear()
     st.experimental_rerun()
 
-# =============================
-# FILTER A:I
-# =============================
+# -------- A:I FILTER --------
 st.sidebar.subheader("🔵 Data Operasional (A:I)")
 bulan_ai_all = sorted(df["Bulan"].dropna().unique())
 
-bulan_ai = st.sidebar.multiselect(
-    "Pilih Bulan (A:I)",
-    bulan_ai_all,
-    default=bulan_ai_all,
-    key="bulan_ai"
+select_all_ai = st.sidebar.checkbox(
+    "Pilih Semua Bulan (A:I)",
+    value=True,
+    key="all_ai"
 )
 
-# =============================
-# FILTER L:Q
-# =============================
+if select_all_ai:
+    bulan_ai = bulan_ai_all
+else:
+    bulan_ai = st.sidebar.multiselect(
+        "Pilih Bulan (A:I)",
+        bulan_ai_all,
+        key="bulan_ai"
+    )
+
+# -------- L:Q FILTER --------
 st.sidebar.subheader("🟣 Data Ringkasan (L:Q)")
 bulan_lq_all = sorted(df["Bulan.1"].dropna().unique())
 
-bulan_lq = st.sidebar.multiselect(
-    "Pilih Bulan (L:Q)",
-    bulan_lq_all,
-    default=bulan_lq_all,
-    key="bulan_lq"
+select_all_lq = st.sidebar.checkbox(
+    "Pilih Semua Bulan (L:Q)",
+    value=True,
+    key="all_lq"
 )
+
+if select_all_lq:
+    bulan_lq = bulan_lq_all
+else:
+    bulan_lq = st.sidebar.multiselect(
+        "Pilih Bulan (L:Q)",
+        bulan_lq_all,
+        key="bulan_lq"
+    )
 
 # =============================
 # HEADER
 # =============================
 st.title("📊 Dashboard Laboratorium")
-st.caption("Data Operasional (A:I) & Data Ringkasan (L:Q) | Streamlit Gratis")
+st.caption("Kategori A:I (Operasional) & L:Q (Ringkasan) | Streamlit Gratis")
 
 # ======================================================
 # ===================== A:I =============================
@@ -119,20 +128,20 @@ qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
 cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
 confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
 
-# CHART
+# CHART A:I
 c1, c2 = st.columns(2)
 with c1:
     fig = px.bar(sampel_param, x="Parameter", y="Sampel",
                  text="Sampel", title="Sampel per Parameter")
     fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
+    fig.update_layout(height=420)
     st.plotly_chart(fig, use_container_width=True)
 
 with c2:
     fig = px.bar(qc_param, x="Parameter", y="QC",
                  text="QC", title="QC per Parameter")
     fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
+    fig.update_layout(height=420)
     st.plotly_chart(fig, use_container_width=True)
 
 c3, c4 = st.columns(2)
@@ -140,14 +149,14 @@ with c3:
     fig = px.bar(cal_param, x="Parameter", y="CAL",
                  text="CAL", title="CAL per Parameter")
     fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
+    fig.update_layout(height=420)
     st.plotly_chart(fig, use_container_width=True)
 
 with c4:
     fig = px.bar(confirm_param, x="Parameter", y="Confirm",
                  text="Confirm", title="Confirm per Parameter")
     fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
+    fig.update_layout(height=420)
     st.plotly_chart(fig, use_container_width=True)
 
 # TREND BULAN A:I
@@ -155,7 +164,7 @@ trend_ai = df_ai.groupby("Bulan", as_index=False)["Sampel"].sum()
 fig = px.bar(trend_ai, x="Bulan", y="Sampel",
              text="Sampel", title="Tren Sampel Bulanan", color="Bulan")
 fig.update_traces(textposition="outside", cliponaxis=False)
-fig.update_layout(height=420, margin=dict(t=60))
+fig.update_layout(height=420)
 st.plotly_chart(fig, use_container_width=True)
 
 # EXPORT A:I
@@ -180,46 +189,48 @@ df_lq = df[df["Bulan.1"].isin(bulan_lq)]
 # KPI L:Q
 k5, k6, k7 = st.columns(3)
 k5.metric("Total MU", fmt(df_lq["MU"].sum()))
-k6.metric("Jumlah Gedung", fmt(df_lq["Gedung"].nunique()))
-k7.metric("Jumlah Alat", fmt(df_lq["Alat.1"].nunique()))
+k6.metric("Jumlah Gedung", df_lq["Gedung"].nunique())
+k7.metric("Jumlah Alat", df_lq["Alat.1"].nunique())
 
-# AGGREGASI
-mu_gedung = df_lq.groupby("Gedung", as_index=False)["MU"].sum()
-mu_alat = df_lq.groupby("Alat.1", as_index=False)["MU"].sum()
+# AGGREGASI UNTUK LINE
+mu_tren = (
+    df_lq
+    .groupby(["Bulan.1", "Gedung"], as_index=False)["MU"]
+    .sum()
+)
 
-# CHART
-c5, c6 = st.columns(2)
-with c5:
-    fig = px.bar(mu_gedung, x="Gedung", y="MU",
-                 text="MU", title="MU per Gedung",
-                 color="Gedung",
-                 color_discrete_sequence=px.colors.sequential.Purples)
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
+# LINE CHART (POLI)
+fig = px.line(
+    mu_tren,
+    x="Bulan.1",
+    y="MU",
+    color="Gedung",
+    markers=True,
+    text="MU",
+    title="Perbandingan Tren MU per Gedung"
+)
 
-with c6:
-    fig = px.bar(mu_alat, x="Alat.1", y="MU",
-                 text="MU", title="MU per Alat",
-                 color="Alat.1",
-                 color_discrete_sequence=px.colors.sequential.Purples)
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
+fig.update_traces(
+    textposition="top center",
+    cliponaxis=False
+)
+
+fig.update_layout(
+    height=450,
+    xaxis_title="Bulan",
+    yaxis_title="MU"
+)
+
+st.plotly_chart(fig, use_container_width=True)
 
 # EXPORT L:Q
 st.download_button(
     "⬇️ Download Excel L:Q",
-    export_excel(
-        df_lq.groupby(
-            ["Bulan.1", "Gedung"],
-            as_index=False
-        )["MU"].sum()
-    ),
+    export_excel(mu_tren),
     "data_ringkasan_LQ.xlsx"
 )
 
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | A:I & L:Q • KPI • Export Excel • Free Tier Safe")
+st.caption("© Dashboard Streamlit | A:I & L:Q • KPI • Line Comparison • Free Tier Safe")
