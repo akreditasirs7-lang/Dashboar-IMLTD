@@ -9,10 +9,13 @@ from io import BytesIO
 # =============================
 # CONFIG
 # =============================
-st.set_page_config(page_title="Dashboard Laboratorium", layout="wide")
+st.set_page_config(
+    page_title="Dashboard Laboratorium",
+    layout="wide"
+)
 
 # =============================
-# SIDEBAR STYLE
+# SIDEBAR STYLE (PINK LEMBUT)
 # =============================
 st.markdown(
     """
@@ -28,13 +31,20 @@ st.markdown(
 # =============================
 # LOAD DATA
 # =============================
-CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vShFzH08gzIA2BUP7MUAmrMl8DXh8qGq_QjltBoIPsAyVSgV1XyGJFE2uZ3vntdZNB9Io1EMluKa6Nv/pub?gid=900811511&single=true&output=csv"
+CSV_URL = (
+    "https://docs.google.com/spreadsheets/d/e/"
+    "2PACX-1vShFzH08gzIA2BUP7MUAmrMl8DXh8qGq_QjltBoIPsAyVSgV1XyGJFE2uZ3vntdZNB9Io1EMluKa6Nv/"
+    "pub?gid=900811511&single=true&output=csv"
+)
 
 @st.cache_data
 def load_data():
     df = pd.read_csv(CSV_URL)
+
+    # pastikan kolom tanggal aman
     df["Tanggal"] = pd.to_datetime(df["Tanggal"], errors="coerce")
     df["Tgl"] = pd.to_datetime(df["Tgl"], errors="coerce")
+
     return df
 
 df = load_data()
@@ -49,10 +59,18 @@ def fmt(n):
         return "0"
 
 def export_excel(df):
-    buf = BytesIO()
-    with pd.ExcelWriter(buf, engine="xlsxwriter") as writer:
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False)
-    return buf.getvalue()
+    return buffer.getvalue()
+
+# =============================
+# URUTAN BULAN (PENTING)
+# =============================
+URUTAN_BULAN = [
+    "Jan","Feb","Mar","Apr","Mei","Jun",
+    "Jul","Agu","Sep","Okt","Nov","Des"
+]
 
 # =============================
 # SIDEBAR FILTER (GLOBAL)
@@ -65,14 +83,18 @@ if st.sidebar.button("🔄 Reset Filter"):
 
 st.sidebar.subheader("🔵 Filter Bulan (Global)")
 
-bulan_all = sorted(df["Bulan"].dropna().unique())
+bulan_ai_all = [b for b in URUTAN_BULAN if b in df["Bulan"].dropna().unique()]
 
 pilih_semua = st.sidebar.checkbox("Pilih Semua Bulan", True)
 
-bulan_filter = bulan_all if pilih_semua else st.sidebar.multiselect(
-    "Pilih Bulan",
-    bulan_all
-)
+if pilih_semua:
+    bulan_filter = bulan_ai_all
+else:
+    bulan_filter = st.sidebar.multiselect(
+        "Pilih Bulan",
+        bulan_ai_all,
+        default=bulan_ai_all
+    )
 
 # =============================
 # HEADER
@@ -100,24 +122,50 @@ qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
 cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
 confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
 
-# CHART
+# CHART A:I
 c1, c2 = st.columns(2)
 with c1:
-    fig = px.bar(sampel_param, x="Parameter", y="Sampel",
-                 text="Sampel", title="Sampel per Parameter")
+    fig = px.bar(
+        sampel_param,
+        x="Parameter",
+        y="Sampel",
+        text="Sampel",
+        title="Sampel per Parameter"
+    )
     fig.update_traces(textposition="outside", cliponaxis=False)
     st.plotly_chart(fig, use_container_width=True)
 
 with c2:
-    fig = px.bar(qc_param, x="Parameter", y="QC",
-                 text="QC", title="QC per Parameter")
+    fig = px.bar(
+        qc_param,
+        x="Parameter",
+        y="QC",
+        text="QC",
+        title="QC per Parameter"
+    )
     fig.update_traces(textposition="outside", cliponaxis=False)
     st.plotly_chart(fig, use_container_width=True)
 
 # TREND BULAN A:I
-trend_ai = df_ai.groupby("Bulan", as_index=False)["Sampel"].sum()
-fig = px.bar(trend_ai, x="Bulan", y="Sampel",
-             text="Sampel", title="Tren Sampel Bulanan", color="Bulan")
+trend_ai = (
+    df_ai.groupby("Bulan", as_index=False)["Sampel"]
+    .sum()
+)
+
+trend_ai["Bulan"] = pd.Categorical(
+    trend_ai["Bulan"],
+    categories=URUTAN_BULAN,
+    ordered=True
+)
+trend_ai = trend_ai.sort_values("Bulan")
+
+fig = px.bar(
+    trend_ai,
+    x="Bulan",
+    y="Sampel",
+    text="Sampel",
+    title="Tren Sampel Bulanan"
+)
 fig.update_traces(textposition="outside", cliponaxis=False)
 st.plotly_chart(fig, use_container_width=True)
 
@@ -138,8 +186,8 @@ st.download_button(
 st.markdown("---")
 st.markdown("## 🟣 Data Ringkasan (L:Q)")
 
-# L:Q TETAP IKUT FILTER BULAN GLOBAL
-df_lq = df[df["Bulan"].isin(bulan_filter)]
+# 🔴 PENTING: L:Q pakai Bulan.1
+df_lq = df[df["Bulan.1"].isin(bulan_filter)]
 
 # KPI L:Q
 k5, k6, k7 = st.columns(3)
@@ -148,22 +196,47 @@ k6.metric("Jumlah Gedung", df_lq["Gedung"].nunique())
 k7.metric("Jumlah Alat", df_lq["Alat.1"].nunique())
 
 # =============================
-# BAR TOTAL MU PER BULAN
+# TOTAL MU PER BULAN (SUM)
 # =============================
 mu_bulanan = (
-    df_lq.groupby("Bulan", as_index=False)["MU"]
+    df_lq
+    .groupby("Bulan.1", as_index=False)["MU"]
     .sum()
 )
 
+# urutkan bulan dengan benar
+mu_bulanan["Bulan.1"] = pd.Categorical(
+    mu_bulanan["Bulan.1"],
+    categories=URUTAN_BULAN,
+    ordered=True
+)
+mu_bulanan = mu_bulanan.sort_values("Bulan.1")
+
+# hapus bulan MU = 0 (biar gak ada bulan hantu)
+mu_bulanan = mu_bulanan[mu_bulanan["MU"] > 0]
+
+# =============================
+# BAR CHART L:Q
+# =============================
 fig = px.bar(
     mu_bulanan,
-    x="Bulan",
+    x="Bulan.1",
     y="MU",
     text="MU",
     title="Total MU per Bulan"
 )
 
-fig.update_traces(textposition="outside", cliponaxis=False)
+fig.update_traces(
+    textposition="outside",
+    cliponaxis=False
+)
+
+fig.update_layout(
+    xaxis_title="Bulan",
+    yaxis_title="MU",
+    height=420
+)
+
 st.plotly_chart(fig, use_container_width=True)
 
 # EXPORT L:Q
@@ -176,4 +249,7 @@ st.download_button(
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | L:Q Ringkasan Bulanan • Tidak Ruwet • Free Tier Safe")
+st.caption(
+    "© Dashboard Streamlit | A:I Operasional & L:Q Ringkasan Bulanan | "
+    "Akurat • Tidak Ada Bulan Palsu • Free Tier Safe"
+)
