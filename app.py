@@ -4,6 +4,11 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
 
 # =============================
 # CONFIG
@@ -14,7 +19,7 @@ st.set_page_config(
 )
 
 # =============================
-# SIDEBAR STYLE (PINK LEMBUT)
+# SIDEBAR STYLE
 # =============================
 st.markdown(
     """
@@ -42,190 +47,135 @@ def load_data():
 df = load_data()
 
 # =============================
+# EXPORT FUNCTIONS
+# =============================
+def export_excel(df):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
+def export_pdf(df, title):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = [Paragraph(title, styles["Heading1"])]
+
+    table_data = [df.columns.tolist()] + df.astype(str).values.tolist()
+    table = Table(table_data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("FONT", (0,0), (-1,0), "Helvetica-Bold")
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+    return buffer.getvalue()
+
+# =============================
 # SIDEBAR FILTER
 # =============================
 st.sidebar.title("🔎 Filter Dashboard")
 
-# ======================================================
-# ================= KATEGORI A:I ========================
-# ======================================================
+# --- A:I ---
 st.sidebar.subheader("🔵 Data Operasional (A:I)")
-
 bulan_ai_all = sorted(df["Bulan"].dropna().unique())
-
-select_all_ai = st.sidebar.checkbox(
-    "Pilih Semua Bulan (A:I)",
-    value=True,
-    key="select_all_ai"
+bulan_ai = st.sidebar.multiselect(
+    "Bulan A:I",
+    bulan_ai_all,
+    default=bulan_ai_all,
+    key="bulan_ai"
 )
 
-if select_all_ai:
-    bulan_ai = bulan_ai_all
-else:
-    bulan_ai = st.sidebar.multiselect(
-        "Pilih Bulan (A:I)",
-        bulan_ai_all,
-        default=bulan_ai_all,
-        key="bulan_ai"
-    )
-
-# ======================================================
-# ================= KATEGORI A:Q ========================
-# ======================================================
+# --- A:Q ---
 st.sidebar.subheader("🟣 Data Ringkasan (A:Q)")
-
 bulan_aq_all = sorted(df["Bulan.1"].dropna().unique())
-
-select_all_aq = st.sidebar.checkbox(
-    "Pilih Semua Bulan (A:Q)",
-    value=True,
-    key="select_all_aq"
+bulan_aq = st.sidebar.multiselect(
+    "Bulan A:Q",
+    bulan_aq_all,
+    default=bulan_aq_all,
+    key="bulan_aq"
 )
-
-if select_all_aq:
-    bulan_aq = bulan_aq_all
-else:
-    bulan_aq = st.sidebar.multiselect(
-        "Pilih Bulan (A:Q)",
-        bulan_aq_all,
-        default=bulan_aq_all,
-        key="bulan_aq"
-    )
 
 # =============================
 # HEADER
 # =============================
 st.title("📊 Dashboard Laboratorium")
-st.caption("Operasional (A:I) & Ringkasan (A:Q) | Streamlit Free Tier")
 
 # ======================================================
-# ===================== BAGIAN A:I =====================
+# ===================== A:I =============================
 # ======================================================
 st.markdown("## 🔵 Data Operasional (A:I)")
 
 df_ai = df[df["Bulan"].isin(bulan_ai)]
 
-# ---------- AGGREGASI ----------
-sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
-qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
-cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
-confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
+ai_export = df_ai.groupby("Parameter", as_index=False)[
+    ["Sampel", "QC", "CAL", "Confirm"]
+].sum()
 
-# ---------- CHART ROW 1 ----------
-c1, c2 = st.columns(2)
+st.dataframe(ai_export, use_container_width=True)
 
-with c1:
-    fig = px.bar(
-        sampel_param,
-        x="Parameter",
-        y="Sampel",
-        title="Sampel per Parameter",
-        text="Sampel"
+# EXPORT A:I
+format_ai = st.selectbox("Export Data A:I", ["Excel", "PDF"], key="exp_ai")
+if format_ai == "Excel":
+    st.download_button(
+        "⬇️ Download Excel A:I",
+        export_excel(ai_export),
+        "data_operasional.xlsx"
     )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
-
-with c2:
-    fig = px.bar(
-        qc_param,
-        x="Parameter",
-        y="QC",
-        title="QC per Parameter",
-        text="QC"
+else:
+    st.download_button(
+        "⬇️ Download PDF A:I",
+        export_pdf(ai_export, "Data Operasional (A:I)"),
+        "data_operasional.pdf"
     )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
-
-# ---------- CHART ROW 2 ----------
-c3, c4 = st.columns(2)
-
-with c3:
-    fig = px.bar(
-        cal_param,
-        x="Parameter",
-        y="CAL",
-        title="CAL per Parameter",
-        text="CAL"
-    )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
-
-with c4:
-    fig = px.bar(
-        confirm_param,
-        x="Parameter",
-        y="Confirm",
-        title="Confirm per Parameter",
-        text="Confirm"
-    )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
-
-# ---------- TREND BULAN ----------
-st.markdown("### 📈 Tren Sampel Bulanan")
-
-trend_ai = df_ai.groupby("Bulan", as_index=False)["Sampel"].sum()
-
-fig = px.bar(
-    trend_ai,
-    x="Bulan",
-    y="Sampel",
-    title="Tren Sampel Bulanan",
-    text="Sampel",
-    color="Bulan"
-)
-fig.update_traces(textposition="outside", cliponaxis=False)
-fig.update_layout(height=420, margin=dict(t=60))
-st.plotly_chart(fig, use_container_width=True)
 
 # ======================================================
-# ===================== BAGIAN A:Q =====================
+# ===================== A:Q =============================
 # ======================================================
 st.markdown("---")
 st.markdown("## 🟣 Data Ringkasan (A:Q)")
 
 df_aq = df[df["Bulan.1"].isin(bulan_aq)]
 
-# ---------- AGGREGASI ----------
-mu_gedung = df_aq.groupby("Gedung", as_index=False)["MU"].sum()
-mu_alat = df_aq.groupby("Alat.1", as_index=False)["MU"].sum()
+aq_export = df_aq.groupby(
+    ["Bulan.1", "Gedung"],
+    as_index=False
+)["MU"].sum()
 
-# ---------- CHART A:Q ----------
-c5, c6 = st.columns(2)
+# ---------- 3D TREND ----------
+st.markdown("### 📊 3D Tren MU Bulanan")
 
-with c5:
-    fig = px.bar(
-        mu_gedung,
-        x="Gedung",
-        y="MU",
-        title="MU per Gedung",
-        text="MU",
-        color="Gedung",
-        color_discrete_sequence=px.colors.sequential.Purples
+fig = px.scatter_3d(
+    aq_export,
+    x="Bulan.1",
+    y="Gedung",
+    z="MU",
+    color="Gedung",
+    size="MU",
+    title="3D Tren MU Bulanan"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+st.dataframe(aq_export, use_container_width=True)
+
+# EXPORT A:Q
+format_aq = st.selectbox("Export Data A:Q", ["Excel", "PDF"], key="exp_aq")
+if format_aq == "Excel":
+    st.download_button(
+        "⬇️ Download Excel A:Q",
+        export_excel(aq_export),
+        "data_ringkasan.xlsx"
     )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
-
-with c6:
-    fig = px.bar(
-        mu_alat,
-        x="Alat.1",
-        y="MU",
-        title="MU per Alat",
-        text="MU",
-        color="Alat.1",
-        color_discrete_sequence=px.colors.sequential.Purples
+else:
+    st.download_button(
+        "⬇️ Download PDF A:Q",
+        export_pdf(aq_export, "Data Ringkasan (A:Q)"),
+        "data_ringkasan.pdf"
     )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    fig.update_layout(height=420, margin=dict(t=60))
-    st.plotly_chart(fig, use_container_width=True)
 
 # =============================
 # FOOTER
 # =============================
-st.caption("© Dashboard Streamlit | Filter lengkap • Data akurat • Free Tier Safe")
+st.caption("© Dashboard Streamlit | Export Excel & PDF | 3D Trend Aman Free Tier")
