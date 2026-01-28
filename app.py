@@ -15,13 +15,17 @@ st.set_page_config(
 )
 
 # =============================
-# SIDEBAR STYLE (PINK LEMBUT)
+# DARK MODE + SIDEBAR STYLE
 # =============================
 st.markdown(
     """
     <style>
+    body, .stApp {
+        background-color: #0e1117;
+        color: #fafafa;
+    }
     [data-testid="stSidebar"] {
-        background-color: #fde4ec;
+        background-color: #1a1f2b;
     }
     </style>
     """,
@@ -62,42 +66,33 @@ def export_excel(df):
     return buffer.getvalue()
 
 # =============================
-# URUTAN BULAN (WAJIB)
+# URUTAN BULAN
 # =============================
 URUTAN_BULAN = [
-    "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-    "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+    "Jan","Feb","Mar","Apr","Mei","Jun",
+    "Jul","Agu","Sep","Okt","Nov","Des"
 ]
 
 # =============================
-# SIDEBAR FILTER (GLOBAL)
+# SIDEBAR FILTER
 # =============================
 st.sidebar.title("🔎 Filter Dashboard")
-
-if st.sidebar.button("🔄 Reset Filter"):
-    st.session_state.clear()
-    st.experimental_rerun()
-
-st.sidebar.subheader("🔵 Filter Bulan")
 
 bulan_available = [b for b in URUTAN_BULAN if b in df["Bulan"].dropna().unique()]
 
 pilih_semua = st.sidebar.checkbox("Pilih Semua Bulan", True)
 
-if pilih_semua:
-    bulan_filter = bulan_available
-else:
-    bulan_filter = st.sidebar.multiselect(
-        "Pilih Bulan",
-        bulan_available,
-        default=bulan_available
-    )
+bulan_filter = bulan_available if pilih_semua else st.sidebar.multiselect(
+    "Pilih Bulan",
+    bulan_available,
+    default=bulan_available
+)
 
 # =============================
 # HEADER
 # =============================
 st.title("📊 Dashboard Laboratorium")
-st.caption("Data Operasional (A:I) & Ringkasan (L:Q) | Streamlit Gratis")
+st.caption("A:I Operasional & L:Q Ringkasan Bulanan | Dark Mode")
 
 # ======================================================
 # ===================== A:I =============================
@@ -115,69 +110,25 @@ k4.metric("Total Confirm", fmt(df_ai["Confirm"].sum()))
 
 # AGGREGASI PARAMETER
 sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
-qc_param = df_ai.groupby("Parameter", as_index=False)["QC"].sum()
-cal_param = df_ai.groupby("Parameter", as_index=False)["CAL"].sum()
-confirm_param = df_ai.groupby("Parameter", as_index=False)["Confirm"].sum()
 
-# CHART PARAMETER
-c1, c2 = st.columns(2)
-with c1:
-    fig = px.bar(
-        sampel_param,
-        x="Parameter",
-        y="Sampel",
-        text="Sampel",
-        title="Sampel per Parameter"
-    )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    st.plotly_chart(fig, use_container_width=True)
-
-with c2:
-    fig = px.bar(
-        qc_param,
-        x="Parameter",
-        y="QC",
-        text="QC",
-        title="QC per Parameter"
-    )
-    fig.update_traces(textposition="outside", cliponaxis=False)
-    st.plotly_chart(fig, use_container_width=True)
-
-# TREND BULAN A:I
-trend_ai = (
-    df_ai.groupby("Bulan", as_index=False)["Sampel"]
-    .sum()
-)
-
-trend_ai["Bulan"] = pd.Categorical(
-    trend_ai["Bulan"],
-    categories=URUTAN_BULAN,
-    ordered=True
-)
-
-trend_ai = trend_ai.sort_values("Bulan")
-
+# BAR CHART A:I
 fig = px.bar(
-    trend_ai,
-    x="Bulan",
+    sampel_param,
+    x="Parameter",
     y="Sampel",
+    color="Parameter",
     text="Sampel",
-    title="Tren Sampel Bulanan (Jan–Des)"
+    color_discrete_sequence=px.colors.qualitative.Bold,
+    title="Sampel per Parameter"
 )
 
-fig.update_traces(textposition="outside", cliponaxis=False)
+fig.update_traces(
+    textposition="outside",
+    cliponaxis=False,
+    hovertemplate="<b>Parameter:</b> %{x}<br><b>Sampel:</b> %{y:,}<extra></extra>"
+)
+
 st.plotly_chart(fig, use_container_width=True)
-
-# EXPORT A:I
-st.download_button(
-    "⬇️ Download Excel A:I",
-    export_excel(
-        df_ai.groupby("Parameter", as_index=False)[
-            ["Sampel", "QC", "CAL", "Confirm"]
-        ].sum()
-    ),
-    "data_operasional_AI.xlsx"
-)
 
 # ======================================================
 # ===================== L:Q =============================
@@ -185,7 +136,6 @@ st.download_button(
 st.markdown("---")
 st.markdown("## 🟣 Data Ringkasan (L:Q)")
 
-# 🔴 PAKAI BULAN.1 UNTUK L:Q
 df_lq = df[df["Bulan.1"].isin(bulan_filter)]
 
 # KPI L:Q
@@ -195,11 +145,10 @@ k6.metric("Jumlah Gedung", df_lq["Gedung"].nunique())
 k7.metric("Jumlah Alat", df_lq["Alat.1"].nunique())
 
 # =============================
-# TOTAL MU PER BULAN (SUM)
+# TOTAL MU PER BULAN
 # =============================
 mu_bulanan = (
-    df_lq
-    .groupby("Bulan.1", as_index=False)["MU"]
+    df_lq.groupby("Bulan.1", as_index=False)["MU"]
     .sum()
 )
 
@@ -210,31 +159,48 @@ mu_bulanan["Bulan.1"] = pd.Categorical(
 )
 
 mu_bulanan = mu_bulanan.sort_values("Bulan.1")
-
-# buang bulan tanpa MU
 mu_bulanan = mu_bulanan[mu_bulanan["MU"] > 0]
 
-# =============================
+# HIGHLIGHT NILAI TERTINGGI
+max_mu = mu_bulanan["MU"].max()
+mu_bulanan["Highlight"] = mu_bulanan["MU"].apply(
+    lambda x: "Peak" if x == max_mu else "Normal"
+)
+
 # BAR CHART L:Q
-# =============================
 fig = px.bar(
     mu_bulanan,
     x="Bulan.1",
     y="MU",
+    color="Highlight",
     text="MU",
-    title="Total MU per Bulan (Jan–Des)"
+    color_discrete_map={
+        "Peak": "#FFD700",   # emas
+        "Normal": "#7B61FF"  # ungu
+    },
+    title="Total MU per Bulan (Highlight Otomatis)"
 )
 
-fig.update_traces(textposition="outside", cliponaxis=False)
+fig.update_traces(
+    textposition="outside",
+    cliponaxis=False,
+    hovertemplate=
+        "<b>Bulan:</b> %{x}<br>"
+        "<b>MU:</b> %{y:,}<br>"
+        "<extra></extra>"
+)
+
 fig.update_layout(
     xaxis_title="Bulan",
     yaxis_title="MU",
-    height=420
+    height=450
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
-# EXPORT L:Q
+# =============================
+# EXPORT
+# =============================
 st.download_button(
     "⬇️ Download Excel L:Q",
     export_excel(mu_bulanan),
@@ -245,6 +211,5 @@ st.download_button(
 # FOOTER
 # =============================
 st.caption(
-    "© Dashboard Streamlit | A:I Operasional & L:Q Ringkasan Bulanan | "
-    "Urutan Jan–Des • Akurat • Free Tier Safe"
+    "© Dashboard Streamlit | Dark Mode • Highlight Otomatis • Hover Interaktif | Free Tier Safe"
 )
