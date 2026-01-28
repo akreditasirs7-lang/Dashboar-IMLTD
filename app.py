@@ -10,22 +10,18 @@ from io import BytesIO
 # CONFIG
 # =============================
 st.set_page_config(
-    page_title="Dashboard Laboratorium",
+    page_title="Dashboard Laboratorium 3D",
     layout="wide"
 )
 
 # =============================
-# DARK MODE + SIDEBAR STYLE
+# SIDEBAR STYLE (PINK LEMBUT)
 # =============================
 st.markdown(
     """
     <style>
-    body, .stApp {
-        background-color: #0e1117;
-        color: #fafafa;
-    }
     [data-testid="stSidebar"] {
-        background-color: #1a1f2b;
+        background-color: #fde4ec;
     }
     </style>
     """,
@@ -78,6 +74,10 @@ URUTAN_BULAN = [
 # =============================
 st.sidebar.title("🔎 Filter Dashboard")
 
+if st.sidebar.button("🔄 Reset Filter"):
+    st.session_state.clear()
+    st.experimental_rerun()
+
 bulan_available = [b for b in URUTAN_BULAN if b in df["Bulan"].dropna().unique()]
 pilih_semua = st.sidebar.checkbox("Pilih Semua Bulan", True)
 
@@ -90,8 +90,8 @@ bulan_filter = bulan_available if pilih_semua else st.sidebar.multiselect(
 # =============================
 # HEADER
 # =============================
-st.title("📊 Dashboard Laboratorium")
-st.caption("A:I Operasional & L:Q Ringkasan Bulanan | Dark Mode")
+st.title("📊 Dashboard Laboratorium (3D)")
+st.caption("A:I Operasional & L:Q Ringkasan | Visual 3D • Streamlit Gratis")
 
 # ======================================================
 # ===================== A:I =============================
@@ -110,6 +110,7 @@ k4.metric("Total Confirm", fmt(df_ai["Confirm"].sum()))
 # AGGREGASI
 sampel_param = df_ai.groupby("Parameter", as_index=False)["Sampel"].sum()
 
+# BAR WARNA VARIASI
 fig = px.bar(
     sampel_param,
     x="Parameter",
@@ -119,13 +120,7 @@ fig = px.bar(
     color_discrete_sequence=px.colors.qualitative.Bold,
     title="Sampel per Parameter"
 )
-
-fig.update_traces(
-    textposition="outside",
-    cliponaxis=False,
-    hovertemplate="<b>Parameter:</b> %{x}<br><b>Sampel:</b> %{y:,}<extra></extra>"
-)
-
+fig.update_traces(textposition="outside", cliponaxis=False)
 st.plotly_chart(fig, use_container_width=True)
 
 # ======================================================
@@ -158,41 +153,35 @@ mu_bulanan["Bulan.1"] = pd.Categorical(
 mu_bulanan = mu_bulanan.sort_values("Bulan.1")
 mu_bulanan = mu_bulanan[mu_bulanan["MU"] > 0]
 
-# HIGHLIGHT NILAI TERTINGGI
-max_mu = mu_bulanan["MU"].max()
-mu_bulanan["Highlight"] = mu_bulanan["MU"].apply(
-    lambda x: "Peak" if x == max_mu else "Normal"
-)
-
-fig = px.bar(
+# =============================
+# 🔥 3D CHART (COLUMN STYLE)
+# =============================
+fig_3d = px.scatter_3d(
     mu_bulanan,
     x="Bulan.1",
     y="MU",
-    color="Highlight",
+    z=[0]*len(mu_bulanan),   # dasar kolom
+    size="MU",
+    color="MU",
+    color_continuous_scale="Plasma",
     text="MU",
-    color_discrete_map={
-        "Peak": "#FFD700",    # emas
-        "Normal": "#7B61FF"   # ungu
-    },
-    title="Total MU per Bulan (Highlight Otomatis)"
+    title="Total MU per Bulan (3D View)"
 )
 
-fig.update_traces(
-    textposition="outside",
-    cliponaxis=False,
-    hovertemplate=
-        "<b>Bulan:</b> %{x}<br>"
-        "<b>MU:</b> %{y:,}<br>"
-        "<extra></extra>"
+fig_3d.update_traces(
+    textposition="top center"
 )
 
-fig.update_layout(
-    xaxis_title="Bulan",
-    yaxis_title="MU",
-    height=450
+fig_3d.update_layout(
+    scene=dict(
+        xaxis_title="Bulan",
+        yaxis_title="MU",
+        zaxis_title="",
+    ),
+    height=500
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig_3d, use_container_width=True)
 
 # =============================
 # EXPORT
@@ -207,5 +196,5 @@ st.download_button(
 # FOOTER
 # =============================
 st.caption(
-    "© Dashboard Streamlit | Dark Mode • Highlight Peak • Smooth Hover | Free Tier Safe"
+    "© Dashboard Streamlit | Visual 3D • Warna Variatif • Jan–Des • Free Tier Safe"
 )
